@@ -1,0 +1,221 @@
+##Question No.9
+
+**(a)**
+```{r}
+library(ISLR)
+library(MASS)
+library(leaps)
+set.seed(1)
+attach(Boston)
+```
+
+
+```{r}
+polyfit = lm(nox~poly(dis,3), data=Boston)
+summary(polyfit)
+```
+```{r}
+range(dis)
+```
+making grid of values to predict on.
+```{r}
+dis.grid = seq(from=range(dis)[1], to=range(dis)[2], by=0.1)
+preds= predict(polyfit, newdata=list(dis=dis.grid))
+```
+Plotting the data and fit
+
+```{r}
+plot(dis, nox, cex=0.5, col="darkgrey")
+lines(dis.grid,preds, lwd=2, col="red")
+```
+
+from plot we can see that all polynomial terms are significant and it fits the data well.
+
+**(b)**
+
+```{r}
+poly.errors = rep(NA,10)
+
+for(i in 1:10){
+   poly.fit = lm(nox~poly(dis,i), data= Auto)
+   poly.errors[i] = deviance(poly.fit)
+}
+poly.errors
+```
+Training RSS decreases monotonically as degree of polynomial fit increases.
+
+**(c)**
+```{r}
+library(boot)
+cv.error = rep(NA,15)
+
+for(i in 1:15){
+  glm.fit = glm(nox~poly(dis,i), data= Boston)
+  cv.error[i] = cv.glm(Boston, glm.fit, K=10)$delta[2]
+}
+which.min(cv.error)
+```
+cross validation error is minimum for 3 degree polynomial.
+
+Plotting cross validation errors:
+```{r}
+plot(1:15, cv.error, xlab="Degree", type="b")
+```
+**(d)**
+
+as we see that dis has limits of `r range(dis)[1]` to `r range(dis)[2]`. so we will divide at equal 4 intervals of 4,7,11. bs() function excepts either df or knots as argument. if both are specifies then knots are ignored.
+
+```{r}
+library(splines)
+s.fit = lm(nox~bs(dis, df=4, knots = c(4,7,11)), data= Boston)
+summary(s.fit)
+```
+```{r}
+s.pred = predict(s.fit, newdata=list(dis=dis.grid))
+plot(nox~dis, data=Boston, col="darkgrey", cex=0.7)
+lines(dis.grid, s.pred, col="blue", lwd=2)
+```
+**(e)**
+
+ We fit regression splines with df ranging from 3 to 16.
+```{r}
+plot(nox~dis, data=Boston, col="darkgrey", cex=0.7)
+errors = rep(NA,16)
+for (df in 3:16){
+  s.fit = lm(nox~bs(dis, df = df), data= Boston)
+  errors[df] = mean(s.fit$residuals^2)
+  s.pred = predict(s.fit , newdata=list(dis = dis.grid))
+lines(dis.grid, s.pred, col="blue", lwd=2)
+
+}
+```
+```{r}
+errors
+plot(3:16, errors[-c(1,2)], type="b", ylab="Training RSS", xlab="Degree of freedom")
+```
+**(f)**
+Now, using cross validation to select best degrees of freedom.
+taking range of degrees of freedom from 3 to 16.
+```{r warning=FALSE}
+cv.error1 = rep(NA, 16)
+for(df in 3:16){
+  s.fit = glm(nox~bs(dis, df = df), data= Boston)
+  cv.error1[df] = cv.glm(Boston, s.fit, K=10)$delta[2]
+}
+```
+```{r}
+cv.error1
+```
+Plotting errors:
+```{r}
+plot(3:16, cv.error1[-c(1,2)], xlab="Degree of freedom",ylab = "Cross-validation error", lwd=2, col="blue", type="b")
+```
+CV error is minimum for `r which.min(cv.error1)` degrees of freedom.
+
+##Question no.-10
+
+**(a)**
+```{r}
+dim(College)
+sum(is.na(College))
+```
+using 70% data as training set and 30% as test.
+
+```{r}
+train = sample(nrow(College), nrow(College)*0.7)
+test = -train
+college.train = College[train,]
+college.test = College[test,]
+```
+
+```{r}
+names(College)
+```
+
+Using `Outstate` as reponse and other variables as predictors performing forward subset selection.
+
+```{r}
+reg.fwd = regsubsets(Outstate~. , data=College, nvmax=dim(College)[2]-1, method= "forward")
+regfwd.summary = summary(reg.fwd)
+```
+selecting best model based on Cp:
+```{r}
+plot(regfwd.summary$cp)
+points(which.min(regfwd.summary$cp), regfwd.summary$cp[which.min(regfwd.summary$cp)], pch=19, col="red")
+```
+Mimimum cp is for `r which.min(regfwd.summary$cp)` variable model.
+
+**(c)**
+Now, we will select model using validation set.
+
+```{r}
+regfit.fwd  = regsubsets(Outstate~. , data=college.train, nvmax = dim(College)[2]-1, method="forward")
+```
+We will make predictions on test set:
+```{r}
+val.errors = rep(NA,17)
+x.test = model.matrix(Outstate~. , data=college.test)
+for(i in 1:17){
+  coefi = coef(regfit.fwd, id = i)
+  pred = x.test[,names(coefi)]%*%coefi
+  val.errors[i] = mean((college.test[,"Outstate"]-pred)^2)
+}
+```
+plotting errors:
+```{r}
+plot(1:17, val.errors, type="b")
+points(which.min(val.errors), val.errors[which.min(val.errors)], pch= 19, col="red")
+```
+
+From plot we can see that minimum error is at 17 variabales but there is not much significant change in error from 11 variables.
+
+```{r}
+which(summary(regfit.fwd)$which[11,-1])
+
+```
+Above are the 11 features.
+**GAM**
+```{r}
+library(splines)
+library(gam)
+```
+
+We will fit GAM by using smoothin splines for each predictor except "Private" as it is a qualitative predictor.
+ 
+```{r}
+gam.fit = gam(Outstate~ Private + s(Apps, df=2)+ s(Accept, df=2)+ s(Top10perc, df=2)+ s(F.Undergrad, df=2)+ s(Room.Board, df=2)+ s(Personal, df=2)+ s(Terminal, df=2) + s(perc.alumni, df=2)+ s(Expend, df=2) + s(Grad.Rate, df=2), data=college.train)
+```
+plotting:
+
+```{r fig.width= 10, fig.height=10}
+par(mfrow=c(4,3))
+plot(gam.fit, se= TRUE, col="blue")
+```
+We will now find error on test set
+```{r}
+gam.pred = predict(gam.fit, newdata = college.test )
+gam.err = mean((college.test$Outstate - gam.pred)^2)
+gam.err
+```
+We will now find test R^2^.
+Here, gam.tss is total sum of squares which is no model error.
+```{r}
+gam.tss = mean((college.test$Outstate - mean(college.test$Outstate))^2)
+test.r2 = 1 - (gam.err/gam.tss)
+test.r2
+```
+**(d)**
+
+```{r}
+summary(gam.fit)
+```
+
+Anova test shows a strong evidence of non-linear relationship between Expend and Outstate.
+also,
+non- linear relationship of outstate with Top10Perc, F.Undergrad, Terminal. Grad.rate.
+
+
+
+
+
+

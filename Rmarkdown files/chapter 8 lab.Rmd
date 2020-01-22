@@ -1,0 +1,51 @@
+**Question No.-7**
+
+We will try with no. of trees from 1 to 500 and m= $p$, $\frac{p}{2}$, $\sqrt{p}$.
+
+we will make training set and test set to calculate errors:
+
+```{r}
+library(ISLR)
+library(MASS)
+library(randomForest)
+attach(Boston)
+```
+
+```{r}
+dim(Boston)
+```
+
+Now we will be using 300 observations as training data set and others as test data set.
+
+```{r}
+train = sample(1:nrow(Boston), 300)
+```
+
+No we will define different P,
+```{r}
+p = dim(Boston)[2]-1
+p.2 = p/2
+p.sq = sqrt(p)
+```
+
+Now fitting 3 different random forest model:
+```{r}
+rf.p = randomForest(medv~.,data= Boston, mtry = p, ntree= 500, subset= train)
+rf.p2 = randomForest(medv~., data= Boston, mtry = p.2, ntree= 500, subset= train)
+rf.psq = randomForest(medv~. , data= Boston, mtry=p.sq, ntree= 500, subset=train)
+```
+
+Now, we will predict on test data set.
+
+```{r}
+pred1 = predict(rf.p, newdata = Boston[-train,])
+err1 = mean((medv[-train]-pred1)^2)
+pred2 = predict(rf.p2, newdata = Boston[-train,])
+err2 = medv[-train]-pred2
+pred3 = predict(rf.psq, newdata = Boston[-train,])
+err3 = medv[-train]-pred3
+```
+Now we will plot the error:
+```{r}
+plot(1:length(pred1), pred1, col="blue", type="b")
+```

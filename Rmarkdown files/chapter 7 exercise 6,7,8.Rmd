@@ -1,0 +1,180 @@
+##Question no.6
+**(a)**
+We will use 10-fold cross validation for model selection.
+```{r}
+set.seed(1)
+library(ISLR)
+library(MASS)
+library(boot)
+attach(Wage)
+```
+
+
+
+we will consider polynomial up to degree 7.
+We will create an list to store cross validation errors.
+```{r}
+cv.errors = rep(NA,7)
+```
+
+
+```{r}
+for (d in 1:7){
+  glm.fit = glm(wage~poly(age,d), data=Wage)
+  cv.errors[d] = cv.glm(Wage, glm.fit, K=10)$delta[1]
+}
+```
+
+First element of delta is raw error and 2nd one is bias corrected version of it.
+
+```{r}
+plot(x=1:7, y=cv.errors, type="b", xlab="Degree of Polynomial")
+points(which.min(cv.errors),cv.errors[which.min(cv.errors)], col="blue", pch=19)
+
+```
+From plot we can see that there is no significant change in error after degree 3.
+ as we have also seen in lab there is no significant p-value after degree 3.
+
+we will now fit polynomial of degree 3 and plot it.
+```{r}
+poly.fit3 = lm(wage~poly(age,3), data=Wage)
+age.grid = seq(from=range(age)[1], to= range(age)[2])
+preds = predict(poly.fit3, newdata=list(age=age.grid), se=TRUE)
+se.bands = cbind(preds$fit+2*preds$se.fit, preds$fit+2*preds$se.fit)
+```
+plotting:
+```{r}
+plot(age,wage,xlim=range(age), cex=0.5, col="grey")
+lines(age.grid, preds$fit, lwd=2, col="red")
+matlines(age.grid, se.bands,lwd=1 ,lty=3, col="blue")
+```
+**(b)**
+using cross validation to decide optimum number of cuts
+```{r}
+step.error = rep(NA,10)
+for(i in 2:10){
+  Wage$age.cut = cut(Wage$age,i)
+  glm.fit = glm(wage~age.cut, data=Wage)
+  
+  step.error[i] = cv.glm(Wage,glm.fit, K=10)$delta[1]
+  
+}
+```
+ we will now plot errors excluding first element of step error.
+```{r}
+plot(2:10, step.error[-1], type="b")
+```
+
+We can see that CV error is minimum for 8 cuts.
+We will now fit a model with 8 cuts.
+
+```{r}
+step.fit = glm(wage~cut(age,8), data=Wage)
+preds = predict(step.fit, newdata=list(age=age.grid))
+plot(wage~age, data=Wage, cex=0.5, col="grey")
+lines(age.grid, preds, col="blue", lwd=2)
+```
+
+
+##Question no.7
+
+```{r}
+pairs(Wage)
+```
+
+```{r}
+summary(Wage$maritl)
+
+```
+```{r}
+summary(Wage$jobclass)
+```
+```{r}
+plot(Wage$maritl, Wage$age)
+```
+We can see that widowed people have more median salary.
+
+```{r}
+plot(Wage$jobclass, Wage$age)
+```
+NO particular difference.
+
+**Polynomial and step**
+```{r}
+fit1 = lm(wage~maritl, data=Wage)
+fit2 = lm(wage~jobclass, data=Wage)
+fit3 = lm(wage~maritl + jobclass, data=Wage)
+anova(fit1,fit2, fit3)
+```
+We cannot fit splines on categorical data.
+**GAMs**
+
+```{r}
+library(gam)
+
+fit4 = gam(wage ~ maritl + jobclass + s(age,4), data= Wage)
+anova(fit1, fit2, fit3, fit4)
+
+
+```
+##Question no.8
+
+```{r}
+pairs(Auto)
+```
+mpg seems inversely proportional to cylinder, displacement, horsepower, weight.
+
+
+**Polynomial**
+We wil now fit polynomial model to displacement up to degree 5.
+```{r}
+error = rep(NA,5)
+fits = list()
+for(d in 1:5){
+  fits[[d]] = lm(mpg~poly(displacement,d), data= Auto)
+  error[d] = deviance(fits[[d]])
+}
+error
+```
+
+```{r}
+plot(1:5, error, type="b", xlab="degree of polynomials")
+```
+
+
+From plot we can see that quadratic polynomial is sufficient.
+
+We can also use cross validation to select degree.
+```{r}
+library(glmnet)
+library(boot)
+```
+
+```{r}
+cv.error = rep(NA,15)
+for(d in 1:15){
+  glm.fit = glm(mpg~poly(displacement,d), data=Auto)
+  cv.error[i] = cv.glm(Auto, glm.fit, K=10)$delta[1]
+}
+which.min(cv.error)
+```
+cross- validation selected a 10 degree polynomial.
+
+**Splines**
+```{r}
+library(splines)
+cv.errors = rep(NA,15)
+for (df in 3:15){
+  fit = glm(mpg~ns(displacement, df= df), data=Auto)
+  cv.errors[df] = cv.glm(Auto, fit, K=10)$delta[1]
+}
+which.min(cv.errors)
+```
+
+**GAM**
+```{r}
+library(gam)
+fit = gam(mpg~ s(displacement,4) + s(horsepower,4), data= Auto)
+par(mfrow=c(1,3))
+plot(fit, se=TRUE)
+```

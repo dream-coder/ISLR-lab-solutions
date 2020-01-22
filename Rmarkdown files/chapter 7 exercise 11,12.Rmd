@@ -1,0 +1,158 @@
+##Question 11
+It was mentioned that GAMs are generally ???t using a back???tting approach. The idea behind back???tting is actually quite simple. We will now explore back???tting in the context of multiple linear regression. 
+
+Suppose that we would like to perform multiple linear regression, but we do not have software to do so. Instead, we only have software to perform simple linear regression. Therefore, we take the following iterative approach: we repeatedly hold all but one coefficient estimate fixed at its current value, and update only that coefficient estimate using a simple linear regression. The process is continued until convergence-that is, until the coeficient estimates stop changing.
+ we will now try this out.
+ 
+ **(a)**
+We will generate Y accordiing to equation.
+
+$$Y = -2.5 + 4.7X_{1} - 2.9X_{2} + \epsilon$$
+ 
+```{r}
+set.seed(1)
+x1 = rnorm(100)
+x2 = rnorm(100)
+eps = rnorm(100, sd=0.1)
+y = -2.5 + 4.7*x1 - 2.9*x2 + eps 
+```
+
+**(b)**
+let initial value of beta to be 10.
+```{r}
+beta1 = 10
+beta0 = 0
+```
+
+**(c)**
+Now we will fit model of below form
+$$Y-\beta_{1}X_{1} = \beta_{0} + \beta_{2}X_{2} + \epsilon  $$
+
+```{r}
+a = y-beta1*x1
+beta2 = lm(a~x2)$coef[2]
+beta2
+```
+
+**(d)**
+```{r}
+a = y-beta2*x2
+beta1 = lm(a~x1)$coef[2]
+beta1
+```
+for intercept,
+```{r}
+a = y-beta1*x1
+lm(a~x2)$coef
+```
+
+```{r}
+a = y-beta2*x2
+lm(a~x1)$coef
+```
+From above results, we can see that there is very little difference between intercept values of total model so for simplicity we will take intercept value of 2nd model.
+**(e)**
+now,we will create a loop with 1000 iterations.
+also
+
+```{r}
+beta0_step = rep(NA,1000)
+beta1_step = rep(NA,1000)
+beta2_step = rep(NA,1000)
+
+
+for(i in 1:1000){
+  a = y-beta1[i]*x1
+  beta2[i] = lm(a~x2)$coef[2]
+  
+  a = y-beta2[i]*x2
+  fit = lm(a~x1)
+  ##For i=1000, we will not have 1001 beta1 so
+  if(i <1000){
+    beta1[i+1] = fit$coef[2]
+  }
+  beta0[i] = fit$coef[1]
+}
+```
+
+
+we will now plot values of beta0, beta1, beta2.
+
+```{r}
+plot(1:1000, beta0, type="l", xlab="no. of Iteration", ylab="betas", col="green", ylim=c(-5,6))
+lines(1:1000,beta1, col="red")
+lines(1:1000, beta2, col="blue")
+legend("center",c("beta0", "beta1", "beta2"), lty=1, col = c("green", "red","blue"))
+```
+**(f)**
+performing multiple regression
+```{r}
+fit = lm(y~ x1+x2)
+fit$coefficients
+```
+
+Plotting these multiple linear regression coefficients onto previous plot.
+
+```{r}
+plot(1:1000, beta0, type="l", xlab="no. of Iteration", ylab="betas", col="green", ylim=c(-5,6))
+lines(1:1000,beta1, col="red")
+lines(1:1000, beta2, col="blue")
+
+
+abline(h = fit$coef[1], lty="dashed", lwd=3, col= rgb(0,0,0, alpha=0.4))
+abline(h = fit$coef[2], lty="dashed", lwd=3, col= rgb(0,0,0, alpha=0.4))
+abline(h = fit$coef[3], lty="dashed", lwd=3, col= rgb(0,0,0, alpha=0.4))
+
+legend("center",c("beta0", "beta1", "beta2","multiple regression"), lty=c(1,1,1,2), col = c("green", "red","blue","black"), cex=0.6)
+```
+**(g)**
+As we can see from plot, right from start iterations are giving good estimates. So, one iteration.
+
+##Question 12
+
+We will generate simulated data:
+
+```{r}
+set.seed(1)
+p = 100
+n = 1000
+x = matrix(matrix(rnorm(n*p)),ncol=p, nrow=n)
+coefi = rep(NA,p)
+for(i in 1:p){
+  x[,i] = rnorm(n)
+  coefi[i] = rnorm(1) * 100
+}
+y = x %*% coefi  + rnorm(n, sd=0.1)
+plot(y)
+```
+
+
+Find coef estimates with multiple regression
+
+```{r}
+
+fit.lm = lm(y~x)
+coef1 = coef(fit.lm)
+```
+
+Running backfitting with 100 iterations:
+
+```{r}
+coef2 = matrix(0, ncol=p, nrow=100)
+
+mse.error = rep(NA,100)
+for(i in 1:100){
+  for(k in 1:p){
+    a = y - (x[,-k] %*% coef2[i,-k])
+    coef2[i:100,k] = lm(a~x[,k])$coef[2]
+  }
+  
+mse.error[i] = mean((y - (x %*%coef2[i,]))^2)
+}
+plot(1:100, mse.error)
+```
+
+```{r}
+plot(1:5, mse.error[1:5], type="b")
+```
+We can see that 2nd iteration results are close to multiple regression.

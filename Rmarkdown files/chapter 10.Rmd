@@ -1,0 +1,114 @@
+
+##Principal Components
+
+
+We will use `USArrests` data
+```{r}
+dimnames(USArrests)
+```
+We will look at the means and variance of variable.
+
+```{r}
+apply(USArrests,2,mean)
+apply(USArrests,2,var)
+```
+We see that `Assault` has a much larger variance than other variables so it would dominate the principal components, so there is a need to standardize the variables when we perform PCA.
+
+```{r}
+pca.out = prcomp(USArrests, scale=TRUE)
+```
+`scale=TRUE` argument makes the variable standardized i.e. `mean =0`, `s.d. =1`
+
+```{r}
+pca.out
+```
+As loadings of first principal component is somewhat equal in all crimes, so it is telling us about the crime rates.
+While loading of `UrbanPop` in second principal component is highes, so it is telling about urban population.
+
+```{r}
+names(pca.out)
+```
+We can also make a biplot to look a t principal components.
+
+```{r}
+biplot(pca.out, scale= 0, cex= 0.5)
+```
+First principal component is largely due to murder, assault and rape. As we know computer has negative loadings and negative scores. Negative*negative= positive , so the states in left region has high crime rates and states in right have less crime rates.
+
+In second principal component, the main loading is due to urban population, so vertical axis corresponds to amount of urban population.
+
+
+##K-means clustering
+
+k- means clustering works in any dimensions but we will do it in 2 dimesions so we can easily see what is happening and how clusters are formed.
+
+We are going to simulate the data. First we will generate normal gaussian data and then shift their mean around.
+
+```{r}
+set.seed(99)
+x = matrix(rnorm(100*2),100,2)
+xmean = matrix(rnorm(8,sd=4),4,2)
+which = sample(1:4, 100, replace= TRUE)
+x = x + xmean[which,] #Important step- xmean is 4 row matrix but indexing it with 100 rows
+plot(x, col= which, pch= 19)
+```
+We will now use k-means algorithm
+
+```{r}
+km.out = kmeans(x,4, nstart=) #no. of cluster=4, do 15 random starts
+km.out
+```
+`between_ss / total_ss` is similar to $R^{2}$ for clustering. It's a percent of variance explained by the cluster means.
+
+```{r}
+plot(x, col= km.out$cluster, cex=2, pch=1, lwd=2)
+```
+The above points are cluster assignements.
+
+```{r}
+plot(x, col= km.out$cluster, cex=2, pch=1, lwd=2)
+points(x,col= which, pch=19, cex=0.5)
+```
+We can see the mismatch present.
+
+##Hierarchial clustering
+
+we will use the same data as above.
+```{r}
+hc.complete = hclust(dist(x), method="complete")
+#method = complete means largest pairwise diatance to perform clustering, first argument is disssimilarity structure
+plot(hc.complete)
+```
+
+```{r}
+hc.single = hclust(dist(x), method = "single")
+plot(hc.single)
+```
+
+
+```{r}
+hc.average = hclust(dist(x), method= "average")
+plot(hc.average)
+```
+We will use function `cutree` to cut the tree at level 4. 
+This will produce a vector of numbers from 1 to 4, saying which branch each observation is on.
+
+```{r}
+hc.cut  = cutree(hc.complete,4)
+table(hc.cut, which)
+```
+
+```{r}
+table(hc.cut, km.out$cluster)
+```
+
+```{r}
+plot(hc.complete, labels= which)
+```
+
+
+
+
+
+
+
